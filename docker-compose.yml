@@ -1,0 +1,30 @@
+# =============================================================================
+# docker-compose.yml -- run backend (FastAPI+Prolog) and frontend (static) together
+#
+#   DEEPSEEK_API_KEY=your_key docker compose up --build
+#
+#   frontend -> http://localhost:5500
+#   backend  -> http://localhost:8000  (docs at /docs)
+# =============================================================================
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      # Passed through from your shell; AI Q&A is disabled if unset.
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+      DEEPSEEK_MODEL: ${DEEPSEEK_MODEL:-deepseek-v4-pro}
+    restart: unless-stopped
+
+  frontend:
+    image: nginx:alpine
+    ports:
+      - "5500:80"
+    volumes:
+      - ./frontend:/usr/share/nginx/html:ro
+    depends_on:
+      - backend
+    restart: unless-stopped

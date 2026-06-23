@@ -1,0 +1,1515 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>肝癌诊疗决策支持系统</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600&family=Noto+Sans+SC:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f7f5f0;
+    --surface: #ffffff;
+    --surface2: #f0ede6;
+    --border: #ddd8ce;
+    --border-strong: #b8b0a0;
+    --text: #1a1814;
+    --text-muted: #6b6358;
+    --text-faint: #9e9485;
+    --accent: #2c4a3e;
+    --accent-light: #e8f0ed;
+    --accent2: #7a3b1e;
+    --accent2-light: #f5ece7;
+    --amber: #8c6d2f;
+    --amber-light: #faf3e0;
+    --red: #8b2b2b;
+    --red-light: #fdf0f0;
+    --blue: #1e3a5f;
+    --blue-light: #eef3f9;
+    --gold: #c9a227;
+    --radius: 8px;
+    --radius-lg: 14px;
+    --shadow: 0 1px 4px rgba(0,0,0,0.08);
+    --shadow-md: 0 3px 12px rgba(0,0,0,0.1);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Noto Sans SC', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    font-size: 15px;
+    line-height: 1.6;
+  }
+
+  /* Header */
+  .header {
+    background: var(--accent);
+    color: #fff;
+    padding: 0 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    height: 70px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: var(--shadow-md);
+  }
+  .header-icon {
+    width: 34px; height: 34px;
+    background: rgba(255,255,255,0.18);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 17px; flex-shrink: 0;
+    border: none; color: #fff; cursor: pointer;
+    transition: background 0.15s;
+  }
+  .header-icon:hover { background: rgba(255,255,255,0.32); }
+  .header-title-wrap { flex: 1; line-height: 1.3; }
+  .header-title {
+    font-family: 'Noto Serif SC', serif;
+    font-size: 17px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+  }
+  .header-sub {
+    font-size: 10.5px;
+    opacity: 0.72;
+    letter-spacing: 0.01em;
+    margin-top: 2px;
+  }
+  .sidebar-toggle {
+    background: none; border: none; color: rgba(255,255,255,0.85);
+    cursor: pointer; font-size: 20px; padding: 6px 4px; line-height: 1;
+    flex-shrink: 0; border-radius: 6px; transition: background 0.15s;
+  }
+  .sidebar-toggle:hover { background: rgba(255,255,255,0.15); color: #fff; }
+  .api-status {
+    font-size: 12px;
+    display: flex; align-items: center; gap: 6px;
+    opacity: 0.85;
+  }
+  .status-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: #6ee7b7;
+  }
+  .status-dot.offline { background: #fca5a5; }
+
+  /* Layout */
+  .layout { display: flex; min-height: calc(100vh - 70px); }
+
+  .sidebar {
+    width: 220px;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    padding: 1.5rem 0;
+    flex-shrink: 0;
+    position: sticky;
+    top: 70px;
+    height: calc(100vh - 70px);
+    overflow-y: auto;
+    transition: width 0.22s ease, padding 0.22s ease, border 0.22s ease;
+  }
+  /* Collapsed sidebar */
+  .sidebar-hidden .sidebar {
+    width: 0; padding: 0; border-right: none; overflow: hidden;
+  }
+
+  /* Ask panel: full-height hero when no result yet */
+  #panel-ask {
+    display: none; /* overridden by .panel.active */
+    flex-direction: column;
+    align-items: center;
+  }
+  #panel-ask.active {
+    display: flex !important;
+  }
+  .ask-hero {
+    display: flex; flex-direction: column; align-items: center;
+    width: 100%; max-width: 720px;
+    padding: 3rem 0 1.5rem;
+    flex: 1;
+  }
+  .ask-hero .ask-hero-title {
+    font-family: 'Noto Serif SC', serif;
+    font-size: 26px; font-weight: 600;
+    color: var(--text); text-align: center; margin-bottom: 6px;
+  }
+  .ask-hero .ask-hero-sub {
+    font-size: 13px; color: var(--text-muted); text-align: center; margin-bottom: 2rem;
+  }
+  .ask-hero .card { width: 100%; }
+  .ask-result-wrap { width: 100%; max-width: 720px; padding-bottom: 2rem; }
+
+  .nav-section {
+    padding: 0 1rem 1rem;
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    color: var(--text-faint);
+    text-transform: uppercase;
+    margin-top: 0.5rem;
+  }
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 1.25rem;
+    font-size: 14px;
+    color: var(--text-muted);
+    cursor: pointer;
+    border-left: 3px solid transparent;
+    transition: all 0.15s;
+  }
+  .nav-item:hover { background: var(--bg); color: var(--text); }
+  .nav-item.active {
+    background: var(--accent-light);
+    color: var(--accent);
+    border-left-color: var(--accent);
+    font-weight: 500;
+  }
+  .nav-icon { font-size: 16px; width: 20px; text-align: center; }
+
+  .main { flex: 1; padding: 2rem; max-width: 920px; margin: 0 auto; }
+
+  /* Panels */
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  .page-title {
+    font-family: 'Noto Serif SC', serif;
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 0.25rem;
+  }
+  .page-sub {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-bottom: 1.75rem;
+  }
+
+  /* Cards */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    margin-bottom: 1.25rem;
+    box-shadow: var(--shadow);
+  }
+  .card-title {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    margin-bottom: 1rem;
+  }
+
+  /* Form */
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .form-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+  .field { display: flex; flex-direction: column; gap: 5px; }
+  .field label { font-size: 13px; color: var(--text-muted); font-weight: 400; }
+  .field select, .field input[type="number"] {
+    height: 40px;
+    padding: 0 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--bg);
+    color: var(--text);
+    font-size: 14px;
+    font-family: 'Noto Sans SC', sans-serif;
+    appearance: none;
+    -webkit-appearance: none;
+  }
+  .field select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%236b6358'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px; }
+  .field select:focus, .field input:focus { outline: none; border-color: var(--accent); }
+
+  .btn {
+    height: 40px; padding: 0 24px;
+    border: none; border-radius: var(--radius);
+    font-size: 14px; font-weight: 500;
+    cursor: pointer; font-family: 'Noto Sans SC', sans-serif;
+    transition: opacity 0.15s;
+    display: inline-flex; align-items: center; gap: 8px;
+  }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { opacity: 0.88; }
+  .btn-outline { background: transparent; border: 1px solid var(--border-strong); color: var(--text-muted); }
+  .btn-outline:hover { background: var(--bg); color: var(--text); }
+  .btn-sm { height: 32px; padding: 0 14px; font-size: 13px; }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  /* Results */
+  .result-stage-banner {
+    background: var(--accent);
+    color: #fff;
+    border-radius: var(--radius-lg);
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1.25rem;
+    display: flex; align-items: baseline; gap: 1rem;
+    flex-wrap: wrap;
+  }
+  .result-stage-label {
+    font-family: 'Noto Serif SC', serif;
+    font-size: 28px; font-weight: 600;
+  }
+  .result-stage-criteria { font-size: 13px; opacity: 0.85; flex: 1; min-width: 200px; }
+  .result-stage-bclc {
+    font-size: 12px; background: rgba(255,255,255,0.16);
+    padding: 3px 10px; border-radius: 20px; white-space: nowrap;
+  }
+
+  .treatment-list { display: flex; flex-direction: column; gap: 10px; }
+  .treatment-row {
+    padding: 12px 16px;
+    background: var(--bg);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+  }
+  .treatment-row:hover { border-color: var(--border-strong); }
+  .treatment-head {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    gap: 12px;
+  }
+  .treatment-name { font-size: 14px; font-weight: 500; color: var(--text); }
+  .treatment-id { font-size: 11px; color: var(--text-faint); margin-top: 2px; font-family: 'SF Mono', ui-monospace, monospace; }
+  .treatment-note { font-size: 12.5px; color: var(--text-muted); margin-top: 6px; }
+  .badges { display: flex; gap: 6px; flex-wrap: wrap; flex-shrink: 0; align-items: flex-start; }
+
+  /* Generic badges */
+  .badge {
+    font-size: 11px; font-weight: 500;
+    padding: 3px 9px; border-radius: 20px;
+    white-space: nowrap;
+  }
+  .badge-level { background: var(--blue-light); color: var(--blue); }
+  .badge-a { background: var(--accent-light); color: var(--accent); }
+  .badge-b { background: var(--amber-light); color: var(--amber); }
+  .badge-c { background: var(--red-light); color: var(--red); }
+  .badge-unknown { background: var(--surface2); color: var(--text-faint); }
+  .badge-first { background: var(--accent-light); color: var(--accent); }
+  .badge-second { background: var(--accent2-light); color: var(--accent2); }
+  .badge-norec { background: var(--surface2); color: var(--text-muted); text-decoration: line-through; }
+
+  /* Provenance (guideline source) */
+  .prov {
+    display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+    margin-top: 10px; padding-top: 9px;
+    border-top: 1px dashed var(--border);
+  }
+  .prov-label {
+    font-size: 10px; color: var(--text-faint);
+    letter-spacing: 0.08em;
+  }
+  .prov-sec {
+    font-size: 11px; color: var(--text-faint);
+    font-family: 'SF Mono', ui-monospace, monospace;
+    margin-left: auto;
+  }
+  .prov-refs { margin-top: 6px; display: flex; flex-direction: column; gap: 3px; }
+  .prov-ref { font-size: 11px; line-height: 1.5; }
+  .prov-ref-doc { color: var(--text-muted); }
+  .prov-ref-loc { color: var(--text-faint); margin-left: 6px; }
+  .gl-badge {
+    font-size: 10px; font-weight: 500;
+    padding: 2px 8px; border-radius: 10px;
+    white-space: nowrap; cursor: default;
+  }
+  .gl-badge.primary { box-shadow: inset 0 0 0 1.5px currentColor; font-weight: 600; }
+  .gl-nhc  { background: var(--accent-light);  color: var(--accent); }
+  .gl-caca { background: var(--amber-light);   color: var(--amber); }
+  .gl-nccn { background: var(--blue-light);    color: var(--blue); }
+  .gl-esmo { background: var(--accent2-light); color: var(--accent2); }
+
+  /* Filter chips */
+  .chip-group { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 1rem; }
+  .chip {
+    padding: 6px 14px; border-radius: 20px;
+    border: 1px solid var(--border); background: var(--surface);
+    font-size: 13px; color: var(--text-muted); cursor: pointer;
+    transition: all 0.15s;
+  }
+  .chip:hover { border-color: var(--border-strong); color: var(--text); }
+  .chip.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+  /* Stage selector grid */
+  .stage-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; margin-bottom: 1.5rem; }
+  .stage-btn {
+    padding: 10px 8px; border-radius: var(--radius);
+    border: 1px solid var(--border); background: var(--surface);
+    text-align: center; cursor: pointer; transition: all 0.15s;
+  }
+  .stage-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .stage-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .stage-btn .sb-label { font-size: 15px; font-weight: 500; }
+  .stage-btn .sb-sub { font-size: 10px; color: var(--text-faint); margin-top: 3px; }
+  .stage-btn.active .sb-sub { color: rgba(255,255,255,0.7); }
+
+  /* Info table */
+  .info-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .info-table th { text-align: left; padding: 8px 12px; background: var(--bg); color: var(--text-muted); font-weight: 500; border-bottom: 1px solid var(--border); }
+  .info-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  .info-table tr:last-child td { border-bottom: none; }
+  .info-table tr:hover td { background: var(--bg); }
+  .info-table .col-src { white-space: nowrap; }
+
+  /* Loading / Error / Empty */
+  .loading { display: flex; align-items: center; gap: 10px; padding: 2rem; color: var(--text-muted); font-size: 14px; }
+  .spinner { width: 18px; height: 18px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .error-box {
+    background: var(--red-light); border: 1px solid #f5c5c5;
+    border-radius: var(--radius); padding: 1rem 1.25rem;
+    font-size: 13px; color: var(--red);
+  }
+  .empty-state { text-align: center; padding: 3rem; color: var(--text-faint); font-size: 14px; }
+
+  /* Mode banner */
+  .mode-banner {
+    background: var(--amber-light);
+    border: 1px solid #e6c97a;
+    border-radius: var(--radius); padding: 10px 14px;
+    font-size: 12px; color: var(--amber);
+    margin-bottom: 1.5rem;
+    display: flex; align-items: center; gap: 8px;
+  }
+
+  /* Guideline legend (framework panel) */
+  .gl-legend { display: flex; flex-direction: column; gap: 10px; }
+  .gl-legend-row { display: flex; align-items: center; gap: 12px; font-size: 13px; }
+  .gl-legend-row .gl-badge { flex-shrink: 0; }
+
+  /* Q&A panel */
+  .ask-box { display: flex; gap: 10px; align-items: flex-end; }
+  .ask-box textarea {
+    flex: 1; min-height: 52px; max-height: 160px; resize: vertical;
+    padding: 12px 14px; border: 1px solid var(--border); border-radius: var(--radius);
+    background: var(--bg); color: var(--text); font-size: 14px;
+    font-family: 'Noto Sans SC', sans-serif; line-height: 1.5;
+  }
+  .ask-box textarea:focus { outline: none; border-color: var(--accent); }
+  .ask-examples { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 1rem; }
+  .answer-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 1.5rem; box-shadow: var(--shadow); }
+  .answer-text { font-size: 15px; line-height: 1.75; white-space: pre-wrap; }
+  .answer-sources { margin-top: 1.1rem; padding-top: 0.9rem; border-top: 1px dashed var(--border); }
+  .answer-sources .src-title { font-size: 11px; color: var(--text-faint); letter-spacing: 0.08em; margin-bottom: 8px; }
+  .src-item { display: flex; align-items: center; gap: 8px; font-size: 13px; padding: 4px 0; color: var(--text-muted); }
+  .src-item .gl-badge { flex-shrink: 0; }
+
+  /* User chip in header */
+  .user-chip {
+    display: flex; align-items: center; gap: 6px;
+    background: rgba(255,255,255,0.14); border: none; color: #fff;
+    font-family: 'Noto Sans SC', sans-serif; font-size: 12px;
+    padding: 6px 12px; border-radius: 20px; cursor: pointer;
+    transition: background 0.15s; white-space: nowrap;
+  }
+  .user-chip:hover { background: rgba(255,255,255,0.28); }
+  .user-gear { opacity: 0.8; }
+
+  /* First-use gate: block everything behind the identity modal */
+  [inert] { pointer-events: none; }
+  body.gate-active { overflow: hidden; }
+
+  /* Modal (identity + disclaimer gate) */
+  .modal-overlay {
+    position: fixed; inset: 0; z-index: 1000;
+    background: rgba(26,24,20,0.55);
+    display: flex; align-items: center; justify-content: center;
+    padding: 1rem;
+  }
+  .modal-card {
+    background: var(--surface); border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md); padding: 1.75rem;
+    width: 100%; max-width: 440px; max-height: 90vh; overflow-y: auto;
+  }
+  .modal-title {
+    font-family: 'Noto Serif SC', serif; font-size: 19px; font-weight: 600;
+    margin-bottom: 8px;
+  }
+  .modal-sub { font-size: 13px; color: var(--text-muted); line-height: 1.7; margin-bottom: 1.25rem; }
+  .ack-row {
+    display: flex; gap: 9px; align-items: flex-start;
+    font-size: 12.5px; color: var(--text-muted); line-height: 1.6;
+    margin-bottom: 1rem; cursor: pointer;
+  }
+  .ack-row input { margin-top: 3px; flex-shrink: 0; }
+  .modal-error { color: var(--red); font-size: 12.5px; min-height: 18px; margin-bottom: 8px; }
+
+  /* Lab calculator */
+  .link-btn {
+    font-size: 12px; color: var(--accent); cursor: pointer;
+    margin-left: 8px; text-decoration: underline;
+  }
+  .lab-calc {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 1rem; margin-bottom: 1.25rem;
+  }
+  .input-unit { display: flex; gap: 6px; }
+  .input-unit input { flex: 1; min-width: 0; }
+  .input-unit select { width: 92px; flex-shrink: 0; }
+  .calc-out {
+    background: var(--accent-light); border-radius: var(--radius);
+    padding: 10px 14px; font-size: 13px; color: var(--accent);
+  }
+  .calc-detail { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+
+  /* Disposition */
+  .disp-meta { font-size: 13px; color: var(--text-muted); margin-bottom: 12px; }
+  .disp-meta code, .disp-actions code { font-family: 'SF Mono', ui-monospace, monospace; font-size: 12px; }
+  .disp-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .override-box { margin-top: 12px; }
+  .override-box textarea {
+    width: 100%; min-height: 64px; resize: vertical;
+    padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius);
+    background: var(--bg); font-family: 'Noto Sans SC', sans-serif; font-size: 13px;
+  }
+  .override-box textarea:focus { outline: none; border-color: var(--accent); }
+
+  /* Footer */
+  .app-footer {
+    padding: 1rem 1.5rem; font-size: 11.5px; line-height: 1.7;
+    color: var(--text-faint); background: var(--surface);
+    border-top: 1px solid var(--border); text-align: center;
+  }
+
+  /* Print */
+  #print-area { display: none; }
+  @media print {
+    body * { visibility: hidden; }
+    #print-area, #print-area * { visibility: visible; }
+    #print-area {
+      display: block; position: absolute; left: 0; top: 0; width: 100%;
+      padding: 1.5rem 1.5rem 90px; font-size: 12px; color: #000;
+    }
+    #print-area h1 { font-size: 18px; margin-bottom: 12px; }
+    #print-area h2 { font-size: 14px; margin: 16px 0 8px; }
+    .print-kv { width: 100%; border-collapse: collapse; margin-bottom: 6px; }
+    .print-kv td { border: 1px solid #999; padding: 5px 8px; vertical-align: top; }
+    .print-kv td:nth-child(odd) { background: #f0f0f0; width: 22%; font-weight: 600; }
+    .print-sign { margin-top: 28px; font-size: 12px; color: #000; display: flex; gap: 40px; }
+    .print-disclaimer { position: fixed; left: 0; right: 0; bottom: 0; margin: 0 1.5rem; font-size: 11px; color: #333; line-height: 1.7; border-top: 1px solid #999; padding: 8px 0; background: #fff; }
+  }
+
+  /* Responsive */
+  @media (max-width: 700px) {
+    .sidebar { display: none; }
+    .main { padding: 1rem; }
+    .stage-grid { grid-template-columns: repeat(4, 1fr); }
+    .form-grid { grid-template-columns: 1fr; }
+    .form-grid-3 { grid-template-columns: 1fr 1fr; }
+    .prov-sec { margin-left: 0; width: 100%; }
+    .ask-box { flex-direction: column; align-items: stretch; }
+    .ask-hero { padding: 1.5rem 0 1rem; }
+    .ask-hero .ask-hero-title { font-size: 20px; }
+  }
+</style>
+</head>
+<body>
+
+<header class="header">
+  <button class="sidebar-toggle" onclick="toggleSidebar()" title="展开/折叠导航">☰</button>
+  <button class="header-icon" onclick="goHome()" title="返回首页">⚕</button>
+  <div class="header-title-wrap">
+    <div class="header-title">肝癌诊疗决策支持系统</div>
+    <div class="header-sub">本系统基于国家卫健委指南、中国抗癌协会指南，参考美国国家综合癌症网络肝癌诊疗指南、欧洲肿瘤内科学会指南</div>
+  </div>
+  <div class="api-status">
+    <div class="status-dot" id="status-dot"></div>
+    <span id="status-text">检测中…</span>
+  </div>
+  <button class="user-chip" onclick="openIdentityModal()" title="切换当前医生">
+    <span id="current-user"></span><span class="user-gear">⚙</span>
+  </button>
+</header>
+
+<!-- First-use identity + disclaimer gate -->
+<div class="modal-overlay" id="identity-modal" style="display:none">
+  <div class="modal-card">
+    <div class="modal-title">使用前确认</div>
+    <div class="modal-sub">本系统为临床决策<strong>支持</strong>工具，用于辅助参考，<strong>不替代医生的独立判断</strong>。请登记使用者身份，所有查询与处置将据此留痕。</div>
+    <div class="field" style="margin-bottom:12px">
+      <label>姓名</label>
+      <input type="text" id="id-name" placeholder="如：王医生">
+    </div>
+    <div class="field" style="margin-bottom:12px">
+      <label>工号</label>
+      <input type="text" id="id-userid" placeholder="如：D10086">
+    </div>
+    <div class="field" style="margin-bottom:12px">
+      <label>角色</label>
+      <select id="id-role">
+        <option value="attending">主治医师</option>
+        <option value="chief">主任 / 副主任医师</option>
+        <option value="resident">住院医师</option>
+        <option value="other">其他</option>
+      </select>
+    </div>
+    <label class="ack-row">
+      <input type="checkbox" id="id-ack">
+      <span>我已阅读并理解：本系统仅为决策支持，输出源自知识库，临床决策须结合多学科讨论（MDT）与患者具体情况，由医生独立负责。</span>
+    </label>
+    <div class="modal-error" id="id-error"></div>
+    <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="saveIdentity()">进入系统</button>
+  </div>
+</div>
+
+<!-- Print-only rendering target -->
+<div id="print-area"></div>
+
+<div class="layout sidebar-hidden">
+  <nav class="sidebar">
+    <div class="nav-section">智能问答</div>
+    <div class="nav-item" data-panel="ask" onclick="switchPanel(this)">
+      <span class="nav-icon">💬</span>智能问答
+    </div>
+    <div class="nav-section">临床决策</div>
+    <div class="nav-item" data-panel="staging" onclick="switchPanel(this)">
+      <span class="nav-icon">📋</span>分期与治疗方案
+    </div>
+    <div class="nav-item" data-panel="browse" onclick="switchPanel(this)">
+      <span class="nav-icon">🗂</span>按分期浏览
+    </div>
+    <div class="nav-section">证据与治疗</div>
+    <div class="nav-item" data-panel="evidence" onclick="switchPanel(this)">
+      <span class="nav-icon">📊</span>证据等级筛选
+    </div>
+    <div class="nav-item" data-panel="systemic" onclick="switchPanel(this)">
+      <span class="nav-icon">💊</span>系统治疗方案
+    </div>
+    <div class="nav-section">病理诊断</div>
+    <div class="nav-item" data-panel="diagnosis" onclick="switchPanel(this)">
+      <span class="nav-icon">🔬</span>诊断路径查询
+    </div>
+    <div class="nav-item" data-panel="molecular" onclick="switchPanel(this)">
+      <span class="nav-icon">🧬</span>分子病理查询
+    </div>
+    <div class="nav-section">参考</div>
+    <div class="nav-item" data-panel="framework" onclick="switchPanel(this)">
+      <span class="nav-icon">📖</span>证据框架与出处
+    </div>
+  </nav>
+
+  <main class="main">
+    <div id="mode-notice" class="mode-banner" style="display:none"></div>
+
+    <!-- Panel: AI Q&A (homepage) -->
+    <div class="panel active" id="panel-ask">
+      <div class="ask-hero">
+        <div class="ask-hero-title">肝癌诊疗合规决策</div>
+        <div class="ask-hero-sub">用中文提问，AI 仅依据知识库事实作答并标注指南出处</div>
+        <div class="card" style="box-shadow: 0 4px 24px rgba(0,0,0,0.10);">
+          <div class="ask-examples" id="ask-examples"></div>
+          <div class="ask-box">
+            <textarea id="ask-input" placeholder="例如：索拉非尼进展后二线该用什么？HBsAg 阳性要不要抗病毒？" rows="2"></textarea>
+            <button class="btn btn-primary" id="ask-btn" onclick="doAsk()"><span>提问</span></button>
+          </div>
+          <div style="margin-top:8px;font-size:11.5px;color:var(--text-faint)">
+            答案仅复述知识库检索结果；临床决策请结合多学科讨论（MDT）。需在后端配置 <code>DEEPSEEK_API_KEY</code> 方可使用。
+          </div>
+        </div>
+      </div>
+      <div id="ask-result" class="ask-result-wrap"></div>
+    </div>
+
+    <!-- Panel: Staging -->
+    <div class="panel" id="panel-staging">
+      <div class="page-title">分期与治疗方案查询</div>
+      <div class="page-sub">根据患者临床参数确定 CNLC 分期，列出推荐治疗路线，并标注各条目的指南出处</div>
+      <div class="card">
+        <div class="card-title">患者参数</div>
+        <div class="form-grid" style="margin-bottom:14px">
+          <div class="field">
+            <label>PS 评分（体力状态）</label>
+            <select id="inp-ps">
+              <option value="0">0 — 完全活动，无限制</option>
+              <option value="1">1 — 轻度受限，可轻体力活动</option>
+              <option value="2">2 — 中度受限，生活自理</option>
+              <option value="3">3 — 重度受限，大部分时间卧床</option>
+              <option value="4">4 — 完全失能，完全依赖他人</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Child-Pugh 肝功能分级
+              <a class="link-btn" onclick="toggleLabCalc()">用化验值计算</a>
+            </label>
+            <select id="inp-cp">
+              <option value="A">A 级（5–6分，代偿良好）</option>
+              <option value="B">B 级（7–9分，中度代偿）</option>
+              <option value="C">C 级（10–15分，失代偿）</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="lab-calc" id="lab-calc" style="display:none">
+          <div class="card-title" style="margin-bottom:12px">由化验值计算 Child-Pugh / ALBI</div>
+          <div class="form-grid-3" style="margin-bottom:12px">
+            <div class="field">
+              <label>总胆红素</label>
+              <div class="input-unit">
+                <input type="number" id="lab-bili" value="20" min="0" step="0.1">
+                <select id="lab-bili-unit"><option value="umol/L">μmol/L</option><option value="mg/dL">mg/dL</option></select>
+              </div>
+            </div>
+            <div class="field">
+              <label>白蛋白</label>
+              <div class="input-unit">
+                <input type="number" id="lab-alb" value="40" min="0" step="0.1">
+                <select id="lab-alb-unit"><option value="g/L">g/L</option><option value="g/dL">g/dL</option></select>
+              </div>
+            </div>
+            <div class="field">
+              <label>INR</label>
+              <input type="number" id="lab-inr" value="1.0" min="0" step="0.1">
+            </div>
+          </div>
+          <div class="form-grid" style="margin-bottom:12px">
+            <div class="field">
+              <label>腹水</label>
+              <select id="lab-ascites">
+                <option value="none">无</option>
+                <option value="mild">轻度（药物可控）</option>
+                <option value="moderate">中-重度</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>肝性脑病</label>
+              <select id="lab-enceph">
+                <option value="none">无</option>
+                <option value="grade1_2">1–2 级</option>
+                <option value="grade3_4">3–4 级</option>
+              </select>
+            </div>
+          </div>
+          <button class="btn btn-outline btn-sm" onclick="computeChildPugh()">计算并填入</button>
+          <div id="lab-calc-result" style="margin-top:12px"></div>
+        </div>
+
+        <div class="form-grid" style="margin-bottom:14px">
+          <div class="field">
+            <label>患者标识（假名，选填）</label>
+            <input type="text" id="inp-patient" placeholder="如住院号后四位 / 研究编号，勿填姓名">
+          </div>
+        </div>
+        <div class="form-grid-3" style="margin-bottom:14px">
+          <div class="field">
+            <label>肿瘤数目</label>
+            <input type="number" id="inp-tn" value="1" min="1" max="50">
+          </div>
+          <div class="field">
+            <label>最大肿瘤直径（cm）</label>
+            <input type="number" id="inp-td" value="3.0" min="0.1" step="0.1">
+          </div>
+          <div class="field">
+            <label>血管侵犯</label>
+            <select id="inp-vi">
+              <option value="absent">无</option>
+              <option value="present">有（门静脉/肝静脉/下腔静脉癌栓）</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-grid" style="margin-bottom:1.25rem">
+          <div class="field">
+            <label>肝外转移</label>
+            <select id="inp-em">
+              <option value="absent">无</option>
+              <option value="present">有（淋巴结或远处转移）</option>
+            </select>
+          </div>
+          <div style="display:flex;align-items:flex-end;gap:10px">
+            <button class="btn btn-primary" onclick="doStaging()"><span>查询分期与方案</span></button>
+            <button class="btn btn-outline" onclick="resetStaging()">重置</button>
+          </div>
+        </div>
+      </div>
+      <div id="staging-result"></div>
+    </div>
+
+    <!-- Panel: Browse by stage -->
+    <div class="panel" id="panel-browse">
+      <div class="page-title">按分期浏览治疗方案</div>
+      <div class="page-sub">选择 CNLC 分期，查看该分期的推荐治疗路线及出处</div>
+      <div class="stage-grid" id="stage-grid-nav"></div>
+      <div id="browse-result"></div>
+    </div>
+
+    <!-- Panel: Evidence filter -->
+    <div class="panel" id="panel-evidence">
+      <div class="page-title">证据等级筛选</div>
+      <div class="page-sub">按证据等级（L1–L5）与推荐强度（A/B/C）筛选系统治疗推荐，并显示其指南出处</div>
+      <div class="card">
+        <div class="card-title">证据等级（NHC / OCEBM 2011）</div>
+        <div class="chip-group" id="chips-level">
+          <span class="chip" data-val="1" onclick="toggleChip(this,'level')">L1 — 系统综述/RCT</span>
+          <span class="chip" data-val="2" onclick="toggleChip(this,'level')">L2 — 单项RCT/前瞻队列</span>
+          <span class="chip" data-val="3" onclick="toggleChip(this,'level')">L3 — 非随机队列</span>
+          <span class="chip" data-val="5" onclick="toggleChip(this,'level')">L5 — 专家意见</span>
+        </div>
+        <div class="card-title" style="margin-top:1rem">推荐强度</div>
+        <div class="chip-group" id="chips-grade">
+          <span class="chip" data-val="a" onclick="toggleChip(this,'grade')">A — 强推荐</span>
+          <span class="chip" data-val="b" onclick="toggleChip(this,'grade')">B — 中等推荐</span>
+          <span class="chip" data-val="c" onclick="toggleChip(this,'grade')">C — 弱推荐</span>
+        </div>
+        <div style="margin-top:1rem">
+          <button class="btn btn-primary" onclick="doEvidenceFilter()">筛选</button>
+          <button class="btn btn-outline" style="margin-left:8px" onclick="clearEvidenceFilter()">清除</button>
+        </div>
+      </div>
+      <div id="evidence-result"></div>
+    </div>
+
+    <!-- Panel: Systemic therapy -->
+    <div class="panel" id="panel-systemic">
+      <div class="page-title">系统治疗方案</div>
+      <div class="page-sub">一线与二线系统治疗方案，含关键临床试验、证据强度与指南出处</div>
+      <div style="display:flex;gap:8px;margin-bottom:1.5rem">
+        <button class="btn btn-primary btn-sm tab-btn" data-group="systemic" onclick="activateBtn(this,'systemic');loadSystemic('all')">全部</button>
+        <button class="btn btn-outline btn-sm tab-btn" data-group="systemic" onclick="activateBtn(this,'systemic');loadSystemic('first')">仅一线</button>
+        <button class="btn btn-outline btn-sm tab-btn" data-group="systemic" onclick="activateBtn(this,'systemic');loadSystemic('second')">仅二线</button>
+      </div>
+      <div id="systemic-result"></div>
+    </div>
+
+    <!-- Panel: Diagnosis -->
+    <div class="panel" id="panel-diagnosis">
+      <div class="page-title">诊断路径查询</div>
+      <div class="page-sub">查询高危因素、影像方式、免疫组化标志物与 MVI 分级，均标注指南出处</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:1.5rem">
+        <button class="btn btn-primary btn-sm tab-btn" data-group="diagnosis" onclick="activateBtn(this,'diagnosis');loadDiagnosis('risk')">高危因素</button>
+        <button class="btn btn-outline btn-sm tab-btn" data-group="diagnosis" onclick="activateBtn(this,'diagnosis');loadDiagnosis('imaging')">影像方式</button>
+        <button class="btn btn-outline btn-sm tab-btn" data-group="diagnosis" onclick="activateBtn(this,'diagnosis');loadDiagnosis('ihc')">免疫组化标志物</button>
+        <button class="btn btn-outline btn-sm tab-btn" data-group="diagnosis" onclick="activateBtn(this,'diagnosis');loadDiagnosis('mvi')">MVI 分级</button>
+      </div>
+      <div id="diagnosis-result"></div>
+    </div>
+
+    <!-- Panel: Molecular -->
+    <div class="panel" id="panel-molecular">
+      <div class="page-title">分子病理查询</div>
+      <div class="page-sub">各亚型的基因突变、融合及分子靶点信息，标注指南出处</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:1.5rem">
+        <button class="btn btn-primary btn-sm tab-btn" data-group="molecular" onclick="activateBtn(this,'molecular');loadMolecular('all')">全部</button>
+        <button class="btn btn-outline btn-sm tab-btn" data-group="molecular" onclick="activateBtn(this,'molecular');loadMolecular('small_duct')">小胆管型 ICC</button>
+        <button class="btn btn-outline btn-sm tab-btn" data-group="molecular" onclick="activateBtn(this,'molecular');loadMolecular('large_duct')">大胆管型 ICC</button>
+        <button class="btn btn-outline btn-sm tab-btn" data-group="molecular" onclick="activateBtn(this,'molecular');loadMolecular('hcc')">HCC 特殊亚型</button>
+        <button class="btn btn-outline btn-sm tab-btn" data-group="molecular" onclick="activateBtn(this,'molecular');loadMolecular('caca')">CACA 分子分型</button>
+      </div>
+      <div id="molecular-result"></div>
+    </div>
+
+    <!-- Panel: Evidence framework & sources -->
+    <div class="panel" id="panel-framework">
+      <div class="page-title">证据框架与指南出处</div>
+      <div class="page-sub">证据等级、推荐强度体系，以及本知识库整合的四部指南与权威排序</div>
+      <div id="framework-result"></div>
+    </div>
+
+    <!-- Panel: Natural-language Q&A -->
+  </main>
+</div>
+
+<footer class="app-footer">
+  ⚕ 本系统为临床决策<strong>支持</strong>工具，输出源自知识库（以国家卫健委 NHC 2026 为最终权威），仅供参考，<strong>不替代医生独立判断</strong>；临床决策须结合多学科讨论（MDT）。
+</footer>
+
+<script>
+// ===== Config =====
+const API_BASE = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
+  ? 'http://localhost:8000' : '';
+
+// ===== Guideline metadata (matches sources.pl) =====
+// Authority order (high -> low): nhc > caca > nccn = esmo
+const GUIDELINES = {
+  nhc:  { short: '卫健委', full: '国家卫健委 2026（主导 / 最终权威）', cls: 'gl-nhc'  },
+  caca: { short: '抗癌协会', full: '中国抗癌协会 CACA 2026',         cls: 'gl-caca' },
+  nccn: { short: 'NCCN',   full: 'NCCN（美国）2026',                cls: 'gl-nccn' },
+  esmo: { short: 'ESMO',   full: 'ESMO（欧洲）2025',                cls: 'gl-esmo' },
+};
+
+// ===== Provenance + badge helpers =====
+// A source is { g: ['nhc', ...], sec: 'Treatment 4.1' }; first code = primary attribution.
+function glBadge(code, isPrimary) {
+  const m = GUIDELINES[code] || { short: code, full: code, cls: 'badge-unknown' };
+  return `<span class="gl-badge ${m.cls}${isPrimary ? ' primary' : ''}" title="${m.full}${isPrimary ? ' · 主要出处' : ''}">${m.short}</span>`;
+}
+function srcBadges(src) {
+  if (!src || !src.g || !src.g.length) return '';
+  const badges = src.g.map((c, i) => glBadge(c, i === 0)).join('');
+  const sec = src.sec ? `<span class="prov-sec">${src.sec}</span>` : '';
+  return `<div class="prov"><span class="prov-label">出处</span>${badges}${sec}</div>${refLines(src)}`;
+}
+// Real bibliographic references (from references.pl via src.refs).
+function refLines(src) {
+  if (!src || !src.refs || !src.refs.length) return '';
+  return `<div class="prov-refs">${src.refs.map(r =>
+    `<div class="prov-ref"><span class="prov-ref-doc">${r.doc}</span><span class="prov-ref-loc">${r.title} · ${r.loc}</span></div>`
+  ).join('')}</div>`;
+}
+function refText(src) {
+  if (!src || !src.refs || !src.refs.length) return '';
+  return src.refs.map(r => `${r.doc}　${r.title} · ${r.loc}`).join('； ');
+}
+function gradeBadge(g) {
+  const map = { a: ['badge-a', 'A 级 · 强推荐'], b: ['badge-b', 'B 级 · 中等推荐'], c: ['badge-c', 'C 级 · 弱推荐'] };
+  const [cls, label] = map[g] || ['badge-unknown', '未分级'];
+  return `<span class="badge ${cls}">${label}</span>`;
+}
+function levelBadge(l) {
+  if (!l) return '';
+  return `<span class="badge badge-level">证据 L${l}</span>`;
+}
+function lineBadge(line) {
+  if (line === 'first') return '<span class="badge badge-first">一线</span>';
+  if (line === 'second') return '<span class="badge badge-second">二线</span>';
+  return '';
+}
+function loading() { return `<div class="loading"><div class="spinner"></div>查询中…</div>`; }
+function errBox(msg) { return `<div class="error-box">⚠ ${msg}</div>`; }
+
+// (offline DB removed: the backend is now the single source of truth)
+
+// ===== Sidebar toggle =====
+function toggleSidebar() {
+  document.querySelector('.layout').classList.toggle('sidebar-hidden');
+}
+function goHome() {
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('panel-ask').classList.add('active');
+}
+
+// ===== API layer =====
+// The backend is the single source of truth: every clinical fact and its
+// provenance comes straight from the Prolog KB. If the backend is unreachable
+// the app blocks rather than showing stale/duplicated data.
+let isOnline = false;
+let kbVersion = '';
+const KEY2ATOM = { ia: 'Ia', ib: 'Ib', iia: 'IIa', iib: 'IIb', iiia: 'IIIa', iiib: 'IIIb', iv: 'IV' };
+
+async function apiFetch(path, opts) {
+  const id = getIdentity();
+  const res = await fetch(API_BASE + path, {
+    headers: {
+      'Content-Type': 'application/json',
+      'X-User-Id': id.userId || 'unknown',
+      'X-User-Role': id.role || 'unknown',
+    },
+    ...(opts || {}),
+  });
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  return res.json();
+}
+
+// Shown whenever a query is attempted while the backend is unreachable.
+function offlineError() {
+  return errBox('无法连接后端服务，无法获取知识库数据。请启动后端（默认 http://localhost:8000）后刷新页面。');
+}
+
+async function checkApi() {
+  try {
+    const h = await apiFetch('/health');
+    isOnline = true;
+    kbVersion = h.kb_version || '';
+    document.getElementById('status-dot').classList.remove('offline');
+    document.getElementById('status-text').textContent = '后端在线';
+    document.getElementById('mode-notice').style.display = 'none';
+  } catch {
+    isOnline = false;
+    document.getElementById('status-dot').classList.add('offline');
+    document.getElementById('status-text').textContent = '后端未连接';
+    const notice = document.getElementById('mode-notice');
+    notice.textContent = '⚠ 未连接后端服务：知识库数据不可用。请启动后端后刷新页面。';
+    notice.style.display = 'flex';
+  }
+}
+
+// ===== Panel navigation =====
+function switchPanel(el) {
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('panel-' + el.dataset.panel).classList.add('active');
+}
+function activateBtn(el, group) {
+  document.querySelectorAll(`.tab-btn[data-group="${group}"]`).forEach(b => {
+    b.classList.remove('btn-primary'); b.classList.add('btn-outline');
+  });
+  el.classList.remove('btn-outline'); el.classList.add('btn-primary');
+}
+
+// ===== Staging =====
+let lastStaging = null;   // { input, result } of the most recent staging, for export
+let lastAsk = null;       // { question, result, at } of the most recent Q&A, for export
+async function doStaging() {
+  const ps = document.getElementById('inp-ps').value;
+  const cp = document.getElementById('inp-cp').value;
+  const tn = document.getElementById('inp-tn').value;
+  const td = document.getElementById('inp-td').value;
+  const vi = document.getElementById('inp-vi').value;
+  const em = document.getElementById('inp-em').value;
+  const patientRef = (document.getElementById('inp-patient').value || '').trim();
+  const el = document.getElementById('staging-result');
+  if (!isOnline) { el.innerHTML = offlineError(); return; }
+  el.innerHTML = loading();
+  const input = {
+    ps: +ps, child_pugh: cp, tumor_num: +tn, max_diameter: +td,
+    vascular_invasion: vi, extrahepatic_metastasis: em, patient_ref: patientRef,
+  };
+  try {
+    const s = await apiFetch('/api/staging', { method: 'POST', body: JSON.stringify(input) });
+    lastStaging = { input, result: s, at: new Date() };
+    renderStage(el, s);
+  } catch (e) {
+    el.innerHTML = errBox('查询失败：' + e.message);
+  }
+}
+
+function renderRoadmap(s) {
+  return `<div class="treatment-list">
+    <div class="treatment-row">
+      <div class="treatment-head">
+        <div class="treatment-name">${s.line1}</div>
+        <div class="badges"><span class="badge badge-first">一线 / 首选</span></div>
+      </div>
+      ${s.note ? `<div class="treatment-note">${s.note}</div>` : ''}
+      ${srcBadges(s.src)}
+    </div>
+    <div class="treatment-row">
+      <div class="treatment-head">
+        <div class="treatment-name">${s.line2}</div>
+        <div class="badges"><span class="badge badge-second">备选方案</span></div>
+      </div>
+      ${srcBadges(s.src)}
+    </div>
+  </div>`;
+}
+
+function stageBanner(s) {
+  return `<div class="result-stage-banner">
+      <div class="result-stage-label">${s.label}</div>
+      <div class="result-stage-criteria">${s.criteria}</div>
+      <div class="result-stage-bclc">${s.bclc}</div>
+    </div>`;
+}
+
+function dispositionBar(s) {
+  if (!s.decision_id) return '';
+  return `<div class="card" id="disposition-card">
+      <div class="card-title">决策留痕与处置</div>
+      <div class="disp-meta">本次决策已记录 · 决策 ID <code>${s.decision_id}</code></div>
+      <div class="disp-actions" id="disp-actions">
+        <button class="btn btn-primary btn-sm" onclick="disposition('${s.decision_id}','accept')">采纳</button>
+        <button class="btn btn-outline btn-sm" onclick="showOverride('${s.decision_id}')">否决 / 修改</button>
+        <button class="btn btn-outline btn-sm" onclick="printStaging()">导出 / 打印</button>
+      </div>
+      <div id="disp-status"></div>
+    </div>`;
+}
+
+function renderStage(el, s) {
+  el.innerHTML = `
+    ${stageBanner(s)}
+    <div class="card">
+      <div class="card-title">推荐治疗路线${s.reason ? ` · 分期依据：${s.reason}` : ''}</div>
+      ${renderRoadmap(s)}
+      <div style="margin-top:1rem;font-size:12px;color:var(--text-faint)">
+        出处徽章中带描边者为主要归属指南；本知识库以国家卫健委（NHC 2026）为最终权威。本工具仅供参考，临床决策应结合多学科讨论（MDT）。
+      </div>
+    </div>
+    ${dispositionBar(s)}`;
+}
+
+function resetStaging() {
+  document.getElementById('inp-ps').value = '0';
+  document.getElementById('inp-cp').value = 'A';
+  document.getElementById('inp-tn').value = '1';
+  document.getElementById('inp-td').value = '3.0';
+  document.getElementById('inp-vi').value = 'absent';
+  document.getElementById('inp-em').value = 'absent';
+  document.getElementById('staging-result').innerHTML = '';
+}
+
+// ===== Browse by stage =====
+function initBrowse() {
+  const stages = [
+    { k: 'ia', l: 'Ia', s: '单发≤5cm' }, { k: 'ib', l: 'Ib', s: '单发>5cm/2-3个' },
+    { k: 'iia', l: 'IIa', s: '2-3个>3cm' }, { k: 'iib', l: 'IIb', s: '≥4个' },
+    { k: 'iiia', l: 'IIIa', s: '血管侵犯' }, { k: 'iiib', l: 'IIIb', s: '肝外转移' }, { k: 'iv', l: 'IV', s: 'PS3-4/C级' },
+  ];
+  document.getElementById('stage-grid-nav').innerHTML = stages.map(s =>
+    `<div class="stage-btn" data-stage="${s.k}" onclick="browseStage('${s.k}',this)">
+      <div class="sb-label">${s.l}</div><div class="sb-sub">${s.s}</div>
+    </div>`).join('');
+}
+async function browseStage(key, btn) {
+  document.querySelectorAll('.stage-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const el = document.getElementById('browse-result');
+  if (!isOnline) { el.innerHTML = offlineError(); return; }
+  el.innerHTML = loading();
+  let s;
+  try {
+    s = await apiFetch(`/api/treatments/${KEY2ATOM[key]}`);
+  } catch (e) {
+    el.innerHTML = errBox('查询失败：' + e.message); return;
+  }
+  el.innerHTML = `${stageBanner(s)}
+    <div class="card"><div class="card-title">推荐治疗路线</div>${renderRoadmap(s)}</div>`;
+}
+
+// ===== Evidence filter (over systemic regimens) =====
+let selLevel = null, selGrade = null;
+function toggleChip(chip, type) {
+  const val = chip.dataset.val;
+  if (type === 'level') {
+    selLevel = (selLevel == val) ? null : val;
+    document.querySelectorAll('#chips-level .chip').forEach(c => c.classList.toggle('active', c.dataset.val == selLevel));
+  } else {
+    selGrade = (selGrade == val) ? null : val;
+    document.querySelectorAll('#chips-grade .chip').forEach(c => c.classList.toggle('active', c.dataset.val == selGrade));
+  }
+}
+async function doEvidenceFilter() {
+  const el = document.getElementById('evidence-result');
+  if (!selLevel && !selGrade) { el.innerHTML = '<div class="empty-state">请至少选择一个筛选条件</div>'; return; }
+  if (!isOnline) { el.innerHTML = offlineError(); return; }
+  el.innerHTML = loading();
+  let results;
+  try {
+    const params = new URLSearchParams();
+    if (selLevel) params.set('level', selLevel);
+    if (selGrade) params.set('grade', selGrade);
+    results = (await apiFetch(`/api/evidence/filter?${params}`)).results;
+  } catch (e) {
+    el.innerHTML = errBox('查询失败：' + e.message); return;
+  }
+  if (!results.length) { el.innerHTML = '<div class="empty-state">未找到符合条件的推荐</div>'; return; }
+  el.innerHTML = `<div class="card"><div class="card-title">查询结果（${results.length} 条）</div>
+    <div class="treatment-list">${results.map(rowSystemic).join('')}</div></div>`;
+}
+function clearEvidenceFilter() {
+  selLevel = null; selGrade = null;
+  document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+  document.getElementById('evidence-result').innerHTML = '';
+}
+
+// ===== Systemic therapy =====
+function rowSystemic(d) {
+  const recBadge = (d.recommended === false)
+    ? '<span class="badge badge-norec">不推荐</span>'
+    : `${levelBadge(d.level)}${gradeBadge(d.grade)}`;
+  return `<div class="treatment-row">
+    <div class="treatment-head">
+      <div>
+        <div class="treatment-name">${d.cn}</div>
+        <div class="treatment-id">${d.id}${d.trial && d.trial !== '—' ? ' · ' + d.trial : ''}</div>
+      </div>
+      <div class="badges">${lineBadge(d.line)}${recBadge}</div>
+    </div>
+    ${d.note ? `<div class="treatment-note">${d.note}</div>` : ''}
+    ${srcBadges(d.src)}
+  </div>`;
+}
+async function loadSystemic(which) {
+  const el = document.getElementById('systemic-result');
+  if (!isOnline) { el.innerHTML = offlineError(); return; }
+  el.innerHTML = loading();
+  let drugs;
+  try {
+    drugs = (await apiFetch(`/api/systemic-therapy?line=${which}`)).regimens;
+  } catch (e) {
+    el.innerHTML = errBox('查询失败：' + e.message); return;
+  }
+  const first = drugs.filter(d => d.line === 'first');
+  const second = drugs.filter(d => d.line === 'second');
+  let html = '';
+  if (first.length) html += `<div class="card"><div class="card-title">一线治疗方案（${first.length} 项）</div><div class="treatment-list">${first.map(rowSystemic).join('')}</div></div>`;
+  if (second.length) html += `<div class="card"><div class="card-title">二线治疗方案（${second.length} 项）</div><div class="treatment-list">${second.map(rowSystemic).join('')}</div></div>`;
+  el.innerHTML = html || '<div class="empty-state">暂无数据</div>';
+}
+
+// ===== Diagnosis =====
+function srcCell(src) {
+  if (!src || !src.g) return '';
+  const badges = src.g.map((c, i) => glBadge(c, i === 0)).join(' ');
+  return badges + refCompact(src);
+}
+// Compact reference for table cells: 章节 · 页, full doc in tooltip.
+function refCompact(src) {
+  if (!src || !src.refs || !src.refs.length) return '';
+  return src.refs.map(r =>
+    `<div class="prov-ref-loc" title="${r.doc}">${r.title} · ${r.loc}</div>`
+  ).join('');
+}
+async function loadDiagnosis(type) {
+  const el = document.getElementById('diagnosis-result');
+  if (!isOnline) { el.innerHTML = offlineError(); return; }
+  el.innerHTML = loading();
+  const fetchOr = async (path, key) => (await apiFetch(path))[key];
+  try {
+  if (type === 'risk') {
+    const rows = await fetchOr('/api/diagnosis/risk-factors', 'risk_factors');
+    el.innerHTML = `<div class="card"><div class="card-title">肝癌高危因素</div>
+      <table class="info-table"><thead><tr><th>高危因素</th><th>类别</th><th>说明</th><th class="col-src">出处</th></tr></thead>
+      <tbody>${rows.map(f => `<tr><td>${f.cn}</td><td style="color:var(--text-muted)">${f.cat}</td><td style="color:var(--text-muted);font-size:12px">${f.note || '—'}</td><td class="col-src">${srcCell(f.src)}</td></tr>`).join('')}</tbody></table></div>`;
+  } else if (type === 'imaging') {
+    const rows = await fetchOr('/api/diagnosis/imaging', 'imaging');
+    el.innerHTML = `<div class="card"><div class="card-title">肝癌诊断影像方式</div>
+      <table class="info-table"><thead><tr><th>影像方式</th><th>用途</th><th>等级</th><th class="col-src">出处</th></tr></thead>
+      <tbody>${rows.map(m => `<tr><td>${m.cn}</td><td style="color:var(--text-muted);font-size:12px">${m.use}</td><td style="color:var(--text-muted)">${m.grade}</td><td class="col-src">${srcCell(m.src)}</td></tr>`).join('')}</tbody></table></div>`;
+  } else if (type === 'ihc') {
+    const rows = await fetchOr('/api/diagnosis/ihc', 'markers');
+    el.innerHTML = `<div class="card"><div class="card-title">免疫组化 / 分子标志物</div>
+      <table class="info-table"><thead><tr><th>用途</th><th>标志物组合</th><th class="col-src">出处</th></tr></thead>
+      <tbody>${rows.map(m => `<tr><td>${m.cn}</td><td style="color:var(--text-muted)">${m.markers}</td><td class="col-src">${srcCell(m.src)}</td></tr>`).join('')}</tbody></table></div>`;
+  } else if (type === 'mvi') {
+    const rows = await fetchOr('/api/diagnosis/mvi', 'mvi_grades');
+    el.innerHTML = `<div class="card"><div class="card-title">微血管侵犯（MVI）分级标准</div>
+      <table class="info-table"><thead><tr><th>分级</th><th>定义</th><th>风险</th><th class="col-src">出处</th></tr></thead>
+      <tbody>${rows.map(m => `<tr><td><strong>${m.grade}</strong></td><td>${m.cn}</td><td style="color:var(--text-muted)">${m.risk}</td><td class="col-src">${srcCell(m.src)}</td></tr>`).join('')}</tbody></table></div>`;
+  }
+  } catch (e) {
+    el.innerHTML = errBox('查询失败：' + e.message);
+  }
+}
+
+// ===== Molecular =====
+async function loadMolecular(which) {
+  const el = document.getElementById('molecular-result');
+  if (!isOnline) { el.innerHTML = offlineError(); return; }
+  el.innerHTML = loading();
+  let items;
+  try {
+    items = (await apiFetch(`/api/diagnosis/molecular?group=${which}`)).markers;
+  } catch (e) {
+    el.innerHTML = errBox('查询失败：' + e.message); return;
+  }
+  const grouped = {};
+  items.forEach(m => { (grouped[m.groupCn] = grouped[m.groupCn] || []).push(m); });
+  el.innerHTML = Object.entries(grouped).map(([g, ms]) => `
+    <div class="card"><div class="card-title">${g}</div>
+      <table class="info-table"><thead><tr><th>分子标志物 / 基因改变</th><th class="col-src">出处</th></tr></thead>
+      <tbody>${ms.map(m => `<tr><td>${m.marker}</td><td class="col-src">${srcCell(m.src)}</td></tr>`).join('')}</tbody></table>
+    </div>`).join('') || '<div class="empty-state">暂无数据</div>';
+}
+
+// ===== Framework & sources =====
+async function loadFramework() {
+  const el = document.getElementById('framework-result');
+  if (!isOnline) { el.innerHTML = offlineError(); return; }
+  el.innerHTML = loading();
+  let fw;
+  try {
+    fw = await apiFetch('/api/framework');
+  } catch (e) {
+    el.innerHTML = errBox('查询失败：' + e.message); return;
+  }
+  el.innerHTML = `
+    <div class="card">
+      <div class="card-title">整合的指南与权威排序</div>
+      <div class="gl-legend">
+        <div class="gl-legend-row">${glBadge('nhc', true)}<span>国家卫健委 2026 — 主导，冲突时为最终权威</span></div>
+        <div class="gl-legend-row">${glBadge('caca', false)}<span>中国抗癌协会 CACA 2026 — 中国补充</span></div>
+        <div class="gl-legend-row">${glBadge('nccn', false)}<span>NCCN（美国）2026 — 西方参考</span></div>
+        <div class="gl-legend-row">${glBadge('esmo', false)}<span>ESMO（欧洲）2025 — 西方参考</span></div>
+      </div>
+      <div style="margin-top:12px;font-size:12px;color:var(--text-faint)">每条结果的出处徽章中，带描边者为主要归属指南；其余为联合归属或参考。</div>
+    </div>
+    <div class="card">
+      <div class="card-title">证据等级（NHC / OCEBM 2011）</div>
+      <table class="info-table"><thead><tr><th>等级</th><th>说明</th></tr></thead>
+      <tbody>${fw.ocebm.map(l => `<tr><td>${levelBadge(l.level)}</td><td>${l.cn}</td></tr>`).join('')}</tbody></table>
+    </div>
+    <div class="card">
+      <div class="card-title">CNLC 推荐强度</div>
+      <table class="info-table"><thead><tr><th>等级</th><th>说明</th></tr></thead>
+      <tbody>${fw.grades.map(g => `<tr><td>${gradeBadge(g.grade)}</td><td>${g.cn}</td></tr>`).join('')}</tbody></table>
+    </div>`;
+}
+
+// ===== AI Q&A (grounded in the KB via the backend LLM layer) =====
+const ASK_EXAMPLES = [
+  '索拉非尼进展后二线该用什么？',
+  'HBsAg 阳性要不要抗病毒？',
+  'CNLC IIIa 期怎么治疗？',
+  '一个 PS0、Child-Pugh A、单发 4cm 无血管侵犯的患者怎么处理？',
+  'HBV 抗病毒在各指南间有冲突吗？',
+];
+function initAskExamples() {
+  const el = document.getElementById('ask-examples');
+  if (!el) return;
+  el.innerHTML = ASK_EXAMPLES.map(q =>
+    `<span class="chip" onclick="askExample('${q.replace(/'/g, "\\'")}')">${q}</span>`).join('');
+}
+function askExample(q) {
+  document.getElementById('ask-input').value = q;
+  doAsk();
+}
+function renderSourceList(facts) {
+  if (!facts || !facts.length) return '';
+  const seen = new Set(), items = [];
+  facts.forEach(f => {
+    const k = (f.fact || f.label || '') + '|' + (f.src && f.src.sec);
+    if (!seen.has(k)) { seen.add(k); items.push(f); }
+  });
+  return `<div class="answer-sources"><div class="src-title">依据（知识库出处 · ${items.length} 条）</div>${
+    items.map(f => `<div class="src-item">${(f.src.g || []).map((c, i) => glBadge(c, i === 0)).join('')}
+      <span>${(f.fact || f.label || '')}</span><span class="prov-sec">${f.src.sec || ''}</span></div>${refLines(f.src)}`).join('')
+  }</div>`;
+}
+function renderAskTrace(intent, slots) {
+  if (!intent) return '';
+  const slotStr = slots && Object.keys(slots).length
+    ? '：' + Object.entries(slots).map(([k, v]) => `${k}=${v}`).join(', ') : '';
+  return `<div style="margin-top:12px;font-size:12px;color:var(--text-faint)">查询意图：<span class="badge badge-level">${intent}${slotStr}</span></div>`;
+}
+async function doAsk() {
+  const input = document.getElementById('ask-input');
+  const btn = document.getElementById('ask-btn');
+  const el = document.getElementById('ask-result');
+  const question = (input.value || '').trim();
+  if (!question) return;
+  if (!isOnline) {
+    el.innerHTML = errBox('AI 问答需要连接后端（当前为离线演示）。请启动后端并配置 DEEPSEEK_API_KEY。');
+    return;
+  }
+  btn.disabled = true;
+  el.innerHTML = loading();
+  try {
+    const data = await apiFetch('/api/ask', { method: 'POST', body: JSON.stringify({ question }) });
+    lastAsk = { question, result: data, at: new Date() };
+    el.innerHTML = `<div class="answer-card">
+      <div class="answer-text">${(data.answer || '').replace(/</g, '&lt;')}</div>
+      ${renderAskTrace(data.intent, data.slots)}
+      ${renderSourceList(data.citations)}
+    </div>
+    ${askDispositionBar(data)}`;
+    input.value = '';
+  } catch (e) {
+    el.innerHTML = errBox('提问失败：' + e.message);
+  } finally {
+    btn.disabled = false;
+  }
+}
+function askDispositionBar(data) {
+  if (!data.decision_id) return '';
+  return `<div class="card" id="ask-disposition-card" style="margin-top:1.25rem">
+      <div class="card-title">决策留痕与处置</div>
+      <div class="disp-meta">本次问答已记录 · 决策 ID <code>${data.decision_id}</code></div>
+      <div class="disp-actions" id="ask-disp-actions">
+        <button class="btn btn-primary btn-sm" onclick="disposition('${data.decision_id}','accept','','ask-')">采纳</button>
+        <button class="btn btn-outline btn-sm" onclick="showOverride('${data.decision_id}','ask-')">否决 / 修改</button>
+        <button class="btn btn-outline btn-sm" onclick="printAsk()">导出 / 打印</button>
+      </div>
+      <div id="ask-disp-status"></div>
+    </div>`;
+}
+function printAsk() {
+  if (!lastAsk) return;
+  const id = getIdentity();
+  const d = lastAsk.result;
+  const slotStr = d.slots && Object.keys(d.slots).length
+    ? '（' + Object.entries(d.slots).map(([k, v]) => `${k}=${v}`).join(', ') + '）' : '';
+  const cites = (d.citations || []).map(c => {
+    const gs = ((c.src && c.src.g) || []).join(' / ').toUpperCase();
+    const rt = refText(c.src);
+    return `<tr><td>${c.label || ''}</td><td>${gs}　${(c.src && c.src.sec) || ''}${rt ? '<br>' + rt : ''}</td></tr>`;
+  }).join('');
+  const area = document.getElementById('print-area');
+  area.innerHTML = `
+    <h1>肝癌诊疗决策支持 · 智能问答记录</h1>
+    <table class="print-kv">
+      <tr><td>医生</td><td>${(id.name || '')}（工号 ${id.userId || '—'} · ${ROLE_CN[id.role] || id.role || '—'}）</td></tr>
+      <tr><td>时间</td><td>${lastAsk.at.toLocaleString('zh-CN')}</td></tr>
+      <tr><td>决策 ID</td><td>${d.decision_id || '—'}</td></tr>
+      <tr><td>知识库版本</td><td>${kbVersion || '—'}</td></tr>
+      <tr><td>查询意图</td><td>${(d.intent || '—')}${slotStr}</td></tr>
+    </table>
+    <h2>问题</h2>
+    <p>${(lastAsk.question || '').replace(/</g, '&lt;')}</p>
+    <h2>回答</h2>
+    <p style="white-space:pre-wrap">${(d.answer || '').replace(/</g, '&lt;')}</p>
+    ${cites ? `<h2>依据（知识库出处）</h2><table class="print-kv">${cites}</table>` : ''}
+    <div class="print-sign">
+      <span>医师签名：______________________</span>
+      <span>日期：______________________</span>
+    </div>
+    <p class="print-disclaimer">本记录由决策支持系统生成，内容源自知识库（以国家卫健委 NHC 2026 为最终权威），
+    仅供临床参考，不替代医生判断；临床决策应结合多学科讨论（MDT）与患者具体情况。</p>`;
+  window.print();
+}
+
+// ===== Identity + disclaimer gate =====
+const IDENTITY_KEY = 'hcc_identity';
+function getIdentity() {
+  try { return JSON.parse(localStorage.getItem(IDENTITY_KEY)) || {}; }
+  catch { return {}; }
+}
+function hasIdentity() {
+  const id = getIdentity();
+  return !!(id.userId && id.role && id.acknowledged);
+}
+function saveIdentity() {
+  const name = (document.getElementById('id-name').value || '').trim();
+  const userId = (document.getElementById('id-userid').value || '').trim();
+  const role = document.getElementById('id-role').value;
+  const ack = document.getElementById('id-ack').checked;
+  const err = document.getElementById('id-error');
+  if (!name || !userId) { err.textContent = '请填写姓名和工号。'; return; }
+  if (!ack) { err.textContent = '请勾选确认已阅读免责声明。'; return; }
+  localStorage.setItem(IDENTITY_KEY, JSON.stringify({ name, userId, role, acknowledged: true }));
+  document.getElementById('identity-modal').style.display = 'none';
+  applyGate(false);
+  refreshIdentityLabel();
+}
+function applyGate(on) {
+  ['.header', '.layout', '.app-footer'].forEach(sel => {
+    const node = document.querySelector(sel);
+    if (node) node.inert = on;
+  });
+  document.body.classList.toggle('gate-active', on);
+}
+function refreshIdentityLabel() {
+  const id = getIdentity();
+  const el = document.getElementById('current-user');
+  if (el) el.textContent = id.name ? `${id.name}（${ROLE_CN[id.role] || id.role}）` : '';
+}
+function openIdentityModal() {
+  const id = getIdentity();
+  document.getElementById('id-name').value = id.name || '';
+  document.getElementById('id-userid').value = id.userId || '';
+  if (id.role) document.getElementById('id-role').value = id.role;
+  document.getElementById('id-ack').checked = !!id.acknowledged;
+  document.getElementById('id-error').textContent = '';
+  document.getElementById('identity-modal').style.display = 'flex';
+}
+const ROLE_CN = { attending: '主治医师', chief: '主任/副主任医师', resident: '住院医师', other: '其他' };
+
+// ===== Lab -> Child-Pugh calculator =====
+function toggleLabCalc() {
+  const box = document.getElementById('lab-calc');
+  const show = box.style.display === 'none' || !box.style.display;
+  box.style.display = show ? 'block' : 'none';
+  document.getElementById('inp-cp').disabled = show;
+}
+async function computeChildPugh() {
+  const out = document.getElementById('lab-calc-result');
+  if (!isOnline) { out.innerHTML = offlineError(); return; }
+  const body = {
+    bilirubin: +document.getElementById('lab-bili').value,
+    bilirubin_unit: document.getElementById('lab-bili-unit').value,
+    albumin: +document.getElementById('lab-alb').value,
+    albumin_unit: document.getElementById('lab-alb-unit').value,
+    inr: +document.getElementById('lab-inr').value,
+    ascites: document.getElementById('lab-ascites').value,
+    encephalopathy: document.getElementById('lab-enceph').value,
+  };
+  out.innerHTML = loading();
+  try {
+    const r = await apiFetch('/api/liver-function', { method: 'POST', body: JSON.stringify(body) });
+    if (r.error) { out.innerHTML = errBox('计算失败：' + r.error); return; }
+    document.getElementById('inp-cp').value = r.child_pugh.class;
+    const pts = r.child_pugh.points.map(p => `${p.item} ${p.point}`).join('，');
+    const albi = r.albi ? `　ALBI ${r.albi.grade} 级（${r.albi.score}）` : '';
+    out.innerHTML = `<div class="calc-out">已计算：<strong>Child-Pugh ${r.child_pugh.class} 级</strong>
+      （总分 ${r.child_pugh.score}）${albi}<div class="calc-detail">${pts}</div>
+      <div class="calc-detail">已自动填入上方 Child-Pugh，可直接查询分期。</div></div>`;
+  } catch (e) {
+    out.innerHTML = errBox('计算失败：' + e.message);
+  }
+}
+
+// ===== Disposition (physician accept / override) =====
+// prefix scopes the DOM ids so staging ('') and Q&A ('ask-') bars can coexist.
+async function disposition(decisionId, action, reason, prefix) {
+  const p = prefix || '';
+  const status = document.getElementById(p + 'disp-status');
+  try {
+    await apiFetch(`/api/audit/${decisionId}/disposition`, {
+      method: 'POST', body: JSON.stringify({ action, reason: reason || '' }),
+    });
+    const label = action === 'accept' ? '已采纳' : (action === 'override' ? '已否决' : '已修改');
+    document.getElementById(p + 'disp-actions').style.display = 'none';
+    status.innerHTML = `<div class="calc-out">处置已留痕：<strong>${label}</strong>${reason ? '　理由：' + reason.replace(/</g, '&lt;') : ''}</div>`;
+  } catch (e) {
+    status.innerHTML = errBox('处置留痕失败：' + e.message);
+  }
+}
+function showOverride(decisionId, prefix) {
+  const p = prefix || '';
+  const status = document.getElementById(p + 'disp-status');
+  status.innerHTML = `<div class="override-box">
+    <textarea id="${p}override-reason" placeholder="请填写否决 / 修改的临床理由（将写入审计留痕）"></textarea>
+    <div style="margin-top:8px">
+      <button class="btn btn-primary btn-sm" onclick="submitOverride('${decisionId}','${p}')">提交</button>
+    </div></div>`;
+}
+function submitOverride(decisionId, prefix) {
+  const p = prefix || '';
+  const reason = (document.getElementById(p + 'override-reason').value || '').trim();
+  if (!reason) { document.getElementById(p + 'override-reason').focus(); return; }
+  disposition(decisionId, 'override', reason, p);
+}
+
+// ===== Export / print =====
+function printStaging() {
+  if (!lastStaging) return;
+  const id = getIdentity();
+  const s = lastStaging.result, inp = lastStaging.input;
+  const viCn = inp.vascular_invasion === 'present' ? '有' : '无';
+  const emCn = inp.extrahepatic_metastasis === 'present' ? '有' : '无';
+  const area = document.getElementById('print-area');
+  area.innerHTML = `
+    <h1>肝癌诊疗决策支持 · 决策记录</h1>
+    <table class="print-kv">
+      <tr><td>医生</td><td>${(id.name || '')}（工号 ${id.userId || '—'} · ${ROLE_CN[id.role] || id.role || '—'}）</td></tr>
+      <tr><td>患者标识（假名）</td><td>${inp.patient_ref || '—'}</td></tr>
+      <tr><td>时间</td><td>${lastStaging.at.toLocaleString('zh-CN')}</td></tr>
+      <tr><td>决策 ID</td><td>${s.decision_id || '—'}</td></tr>
+      <tr><td>知识库版本</td><td>${kbVersion || '—'}</td></tr>
+    </table>
+    <h2>输入参数</h2>
+    <table class="print-kv">
+      <tr><td>PS 评分</td><td>${inp.ps}</td><td>Child-Pugh</td><td>${inp.child_pugh}</td></tr>
+      <tr><td>肿瘤数目</td><td>${inp.tumor_num}</td><td>最大直径</td><td>${inp.max_diameter} cm</td></tr>
+      <tr><td>血管侵犯</td><td>${viCn}</td><td>肝外转移</td><td>${emCn}</td></tr>
+    </table>
+    <h2>分期与推荐</h2>
+    <p><strong>${s.label}</strong>（${s.bclc}）${s.reason ? '　分期依据：' + s.reason : ''}</p>
+    <p>诊断标准：${s.criteria}</p>
+    <table class="print-kv">
+      <tr><td>一线 / 首选</td><td>${s.line1 || '—'}</td></tr>
+      <tr><td>备选方案</td><td>${s.line2 || '—'}</td></tr>
+      ${s.note ? `<tr><td>要点</td><td>${s.note}</td></tr>` : ''}
+      <tr><td>出处</td><td>${s.src ? (s.src.g || []).join(' / ').toUpperCase() + '　' + (s.src.sec || '') + (refText(s.src) ? '<br>' + refText(s.src) : '') : '—'}</td></tr>
+    </table>
+    <div class="print-sign">
+      <span>医师签名：______________________</span>
+      <span>日期：______________________</span>
+    </div>
+    <p class="print-disclaimer">本记录由决策支持系统生成，内容源自知识库（以国家卫健委 NHC 2026 为最终权威），
+    仅供临床参考，不替代医生判断；临床决策应结合多学科讨论（MDT）与患者具体情况。</p>`;
+  window.print();
+}
+
+// ===== Init =====
+document.addEventListener('DOMContentLoaded', async () => {
+  if (!hasIdentity()) { openIdentityModal(); applyGate(true); }
+  refreshIdentityLabel();
+  await checkApi();
+  initAskExamples();
+  initBrowse();
+  loadSystemic('all');
+  loadFramework();
+});
+</script>
+</body>
+</html>
